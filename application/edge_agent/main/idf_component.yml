@@ -46,3 +46,8 @@ dependencies:
 
   wifi_manager:
     path: ../../../components/common/wifi_manager
+
+  esp_video:
+    path: ../../../components/common/esp_video
+    matches:
+    - if: $CONFIG{ESP_BOARD_DEV_CAMERA_SUPPORT} == True
