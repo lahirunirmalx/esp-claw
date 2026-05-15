@@ -379,7 +379,7 @@ static esp_err_t camera_open_locked(const char *dev_path, const camera_open_opts
         }
         /* Re-opening with explicit opts is ambiguous (resize? reformat?); make
          * the caller close first. Plain open(NULL opts) stays idempotent. */
-        if (opts != NULL && (opts->width != 0 || opts->height != 0 || opts->pixel_format != 0 || opts->nearest)) {
+        if (opts != NULL && (opts->width != 0 || opts->height != 0 || opts->pixel_format != 0)) {
             return ESP_ERR_INVALID_STATE;
         }
         return ESP_OK;
@@ -424,40 +424,10 @@ static esp_err_t camera_open_locked(const char *dev_path, const camera_open_opts
     camera_apply_internal_sizeimage(&format);
     if (ioctl(s_camera.fd, VIDIOC_S_FMT, &format) != 0) {
         int saved_errno = errno;
-        bool nearest_applied = false;
-
-        if (opts != NULL && opts->nearest && requested_width != 0 && requested_height != 0) {
-            uint32_t closest_width = 0;
-            uint32_t closest_height = 0;
-            err = camera_find_closest_size_locked(requested_pixel_format, requested_width, requested_height, &closest_width, &closest_height);
-            if (err == ESP_OK) {
-                ESP_LOGW(TAG, "Requested camera size %ux%u rejected (errno=%d), trying closest %ux%u",
-                         (unsigned)requested_width, (unsigned)requested_height, saved_errno,
-                         (unsigned)closest_width, (unsigned)closest_height);
-                memset(&format, 0, sizeof(format));
-                format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-                format.fmt.pix.width = closest_width;
-                format.fmt.pix.height = closest_height;
-                format.fmt.pix.pixelformat = requested_pixel_format;
-                camera_apply_internal_sizeimage(&format);
-                if (ioctl(s_camera.fd, VIDIOC_S_FMT, &format) == 0) {
-                    nearest_applied = true;
-                } else {
-                    ESP_LOGW(TAG, "VIDIOC_S_FMT closest size %ux%u failed (errno=%d)",
-                             (unsigned)closest_width, (unsigned)closest_height, errno);
-                }
-            } else {
-                ESP_LOGW(TAG, "No closest camera size found for %ux%u format=0x%08" PRIx32 ": %s",
-                         (unsigned)requested_width, (unsigned)requested_height, requested_pixel_format, esp_err_to_name(err));
-            }
-        }
-
-        if (!nearest_applied) {
-            ESP_LOGE(TAG, "VIDIOC_S_FMT failed for requested size=%ux%u format=0x%08" PRIx32 " sizeimage=%" PRIu32 " (errno=%d)",
-                     (unsigned)requested_width, (unsigned)requested_height, requested_pixel_format, format.fmt.pix.sizeimage, saved_errno);
-            camera_close_locked();
-            return ESP_ERR_NOT_SUPPORTED;
-        }
+        ESP_LOGE(TAG, "VIDIOC_S_FMT failed for requested size=%ux%u format=0x%08" PRIx32 " sizeimage=%" PRIu32 " (errno=%d)",
+                 (unsigned)requested_width, (unsigned)requested_height, requested_pixel_format, format.fmt.pix.sizeimage, saved_errno);
+        camera_close_locked();
+        return ESP_ERR_NOT_SUPPORTED;
     }
     /* Driver may have adjusted any field — adopt whatever it reports back. */
 
@@ -1074,6 +1044,30 @@ esp_err_t camera_enum_frame_size(uint32_t pixel_format, uint32_t index,
 
     camera_unlock();
     return ESP_OK;
+}
+
+esp_err_t camera_find_closest_size(uint32_t pixel_format,
+                                   uint32_t target_width, uint32_t target_height,
+                                   uint32_t *out_width, uint32_t *out_height)
+{
+    esp_err_t err;
+
+    if (target_width == 0 || target_height == 0 || out_width == NULL || out_height == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    err = camera_lock();
+    if (err != ESP_OK) {
+        return err;
+    }
+    if (!s_camera.opened) {
+        camera_unlock();
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    err = camera_find_closest_size_locked(pixel_format, target_width, target_height, out_width, out_height);
+    camera_unlock();
+    return err;
 }
 
 esp_err_t camera_enum_frame_interval(uint32_t pixel_format,

@@ -25,7 +25,7 @@ local TAG = "[image_resize]"
 local RUN_SECONDS = 20
 local CAPTURE_TIMEOUT_MS = 3000
 local FRAME_INTERVAL_MS = 40
-local CAMERA_OPEN_OPTS = { format = "JPEG", width = 320, height = 240, nearest = true }
+local CAMERA_OPEN_OPTS = { format = { "JPEG", "RGBP", "YUYV", "UYVY", "YU12" } }
 local GRAY_PROBE_W = 64
 local GRAY_PROBE_H = 64
 local RELEASE_CHECK_EVERY_N = 10

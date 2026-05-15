@@ -17,34 +17,46 @@ filesystem I/O to other modules.
 ## Negotiating resolution / pixel format
 
 Pass `opts` to ask the driver for a specific capture configuration. Any field
-that is `nil` keeps the driver default. The driver may snap to the nearest
-supported value — `camera.info()` reflects what was actually accepted.
+that is `nil` keeps the driver default. `camera.info()` always reflects what
+was actually accepted.
 
 ```lua
 camera.open(paths.dev_path, {
-    width  = 640,
-    height = 480,
-    format = "JPEG",   -- 4-char FOURCC: RGBP/RGBR/RGB3/BGR3/YUYV/UYVY/GREY/Y800/JPEG/MJPG
-    nearest = true,    -- try the closest supported size if the exact size is rejected
+    width   = 640,
+    height  = 480,
+    format  = { "JPEG", "RGBP" }, -- priority list; first one the sensor speaks wins
+    nearest = true,               -- snap width/height to the closest supported size
 })
 local stream = camera.info()
 print(stream.width, stream.height, stream.pixel_format)
 ```
 
-Set `nearest = true` to keep the requested pixel format and only adjust
-width/height when the exact request is rejected. The service first asks the
-driver for the exact request. If `VIDIOC_S_FMT` rejects it, the service
-enumerates sizes for that pixel format, chooses the closest discrete size, or
-clamps stepwise/continuous ranges to the nearest valid step, then calls
-`VIDIOC_S_FMT` again. `camera.info()` is still the source of truth because
-drivers may adjust the fallback size too.
+### `opts.format`
 
-By default, `nearest = false`: a rejected `VIDIOC_S_FMT` fails `camera.open()`.
-The service does not silently fall back to the driver's default stream when
-explicit options were requested.
+Array of FOURCC strings ordered by preference. Valid tokens: `RGBP`, `RGBR`,
+`RGB3`, `BGR3`, `YUYV`, `UYVY`, `GREY` / `Y800`, `YU12`, `JPEG`, `MJPG`.
 
-If the camera is already open with non-default opts, call `camera.close()` first
-or you will get an error — re-opening with new opts is intentionally disallowed.
+- `{ "RGBP" }` — strictly this format. Errors with the list of advertised
+  formats if the sensor does not support it.
+- `{ "JPEG", "RGBP", "YUYV" }` — try in order; the first FOURCC the sensor
+  actually advertises wins.
+- omitted — keep the driver default.
+
+### `opts.width` / `opts.height`
+
+Requested capture size. Omitted means "use the first size the chosen format
+advertises". May be combined with `format` and `nearest`.
+
+### `opts.nearest`
+
+When `true`, the requested `width`/`height` is snapped to the closest size the
+chosen format actually supports before the driver sees the request. Composes
+with `format`: the FOURCC is picked first, then the nearest size lookup runs
+under that FOURCC. Default `false`, which sends the exact requested size and
+returns an error when the driver rejects it.
+
+When the camera is already open and the call requests a reconfiguration (new
+format or nearest snap), the session is closed and reopened transparently.
 
 ## Discovering what the sensor supports
 

@@ -38,12 +38,13 @@ typedef struct {
  *
  * A zero field means "let the driver decide". When any field is non-zero the
  * service issues VIDIOC_S_FMT and adopts whatever values the driver returns.
+ * Callers that want nearest-supported-size snapping should resolve the exact
+ * dimensions via camera_find_closest_size() before calling camera_open().
  */
 typedef struct {
     uint32_t width;
     uint32_t height;
     uint32_t pixel_format;  /* V4L2 FOURCC code; 0 keeps driver default */
-    bool nearest;           /* True to try the closest supported size when VIDIOC_S_FMT rejects the requested size */
 } camera_open_opts_t;
 
 typedef struct {
@@ -138,6 +139,25 @@ esp_err_t camera_enum_frame_interval(uint32_t pixel_format,
                                      uint32_t width, uint32_t height,
                                      uint32_t index,
                                      camera_frame_interval_t *out);
+
+/**
+ * @brief Compute the best-matching supported size for @p pixel_format.
+ *
+ * Walks VIDIOC_ENUM_FRAMESIZES once, scoring each candidate (discrete,
+ * stepwise, or continuous) against the requested @p target_width x
+ * @p target_height. Returns the winning dimensions without touching the
+ * driver — the caller is expected to pass the result to camera_open() as
+ * an exact size, which sidesteps the open-time S_FMT retry path.
+ *
+ * @return ESP_OK on success; ESP_ERR_NOT_FOUND when the driver does not
+ *         advertise any sizes for @p pixel_format (e.g. the format itself is
+ *         unsupported, or ENUM_FRAMESIZES is unimplemented);
+ *         ESP_ERR_INVALID_ARG for zero target dims or NULL outputs;
+ *         ESP_ERR_INVALID_STATE when the camera is not opened.
+ */
+esp_err_t camera_find_closest_size(uint32_t pixel_format,
+                                   uint32_t target_width, uint32_t target_height,
+                                   uint32_t *out_width, uint32_t *out_height);
 
 #ifdef __cplusplus
 }

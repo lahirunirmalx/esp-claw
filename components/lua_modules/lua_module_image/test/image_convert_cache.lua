@@ -29,7 +29,7 @@ local FRAME_INTERVAL_MS = 30
 local JPEG_EVERY_N_FRAMES = 10
 -- Verify "source release does not invalidate cached view" every N frames.
 local RELEASE_CHECK_EVERY_N_FRAMES = 5
-local CAMERA_OPEN_OPTS = { format = "JPEG", width = 320, height = 240, nearest = true }
+local CAMERA_OPEN_OPTS = { format = { "JPEG", "RGBP", "YUYV", "UYVY", "YU12" }, width = 320, height = 240, nearest = true, }
 -- Hit must be at most this ratio of miss; allows for jitter while still
 -- catching a regression that disables the cache entirely.
 local CACHE_HIT_MAX_RATIO = 0.5

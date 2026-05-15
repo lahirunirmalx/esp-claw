@@ -9,7 +9,8 @@ local TAG = "[camera_display_motion]"
 local RUN_SECONDS = 30
 local CAPTURE_TIMEOUT_MS = 3000
 local FRAME_INTERVAL_MS = 30
-local CAMERA_OPEN_OPTS = { format = "JPEG", width = 320, height = 240, nearest = true }
+-- Whatever the sensor exposes; image.convert covers any of these on output.
+local CAMERA_OPEN_OPTS = { format = { "JPEG", "RGBP", "YUYV", "UYVY", "YU12" }, width = 320, height = 240, nearest = true, }
 local MOTION_OPTS = {
     stride = 8,
     pixel_threshold = 0.2,
@@ -83,6 +84,7 @@ if not ok then
     return
 end
 camera_started = true
+print(string.format("%s using format=%s", TAG, camera.info().pixel_format))
 
 local run_ok, run_err = xpcall(function()
     local stream = camera.info()

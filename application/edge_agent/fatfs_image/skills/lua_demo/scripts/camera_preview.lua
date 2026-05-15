@@ -63,14 +63,17 @@ if not ok then
 end
 display_started = true
 
-open_format = { format = "JPEG", width = 320, height = 240, nearest = true }
-ok, err = pcall(camera.open, camera_paths.dev_path, open_format)
+ok, err = pcall(camera.open, camera_paths.dev_path, {
+    format = { "JPEG", "RGBP", "YUYV", "UYVY", "YU12" },
+    width = 320, height = 240, nearest = true,
+})
 if not ok then
     print(TAG .. " ERROR: camera.open failed: " .. tostring(err))
     cleanup()
     return
 end
 camera_started = true
+print(string.format("%s using format=%s", TAG, camera.info().pixel_format))
 
 local run_ok, run_err = xpcall(function()
     local stream = camera.info()

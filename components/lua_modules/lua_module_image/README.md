@@ -95,16 +95,19 @@ with `<close>`, `frame:release()`, or GC.
 
 ## Example: resize
 
+`image.resize(frame, opts)` returns a new, independent `image.frame` at
+`opts.width` x `opts.height`. Optional `opts.format` selects the output
+(`image.RGB565` or `image.GRAY8` only; defaults to RGB565, or GRAY8 when the
+source is already gray). Optional `opts.filter` is `"nearest"` (default) or
+`"bilinear"`. Output dimensions follow the same 1920 x 1080 pixel cap as
+conversion.
+
 ```lua
 local image = require("image")
 
 do
-    -- Default output format follows the source: GRAY8 stays gray, everything
-    -- else lifts to RGB565. Default filter is "nearest".
     local small <close> = image.resize(frame, { width = 96, height = 96 })
 
-    -- Pin the output format (must be image.RGB565 or image.GRAY8) and switch
-    -- to bilinear when quality matters more than throughput.
     local probe <close> = image.resize(frame, {
         width  = 64,
         height = 64,
@@ -112,20 +115,11 @@ do
         filter = "bilinear",
     })
 
-    -- Resize then re-encode to JPEG. The intermediate RGB565 buffer the
-    -- resize step needed is cached on the *source* frame, so a follow-up
-    -- image.convert(frame, image.RGB565) is essentially free.
     local thumb <close> = image.resize(frame, { width = 160, height = 120 })
-    local jpeg <close>  = image.convert(thumb, image.JPEG)
+    local jpeg  <close> = image.convert(thumb, image.JPEG)
     image.save_file("/sdcard/thumb.jpg", jpeg)
 end
 ```
-
-`image.resize` returns a brand-new `image.frame` backed by an independent
-shared store, so releasing the source frame does not affect the resized
-frame and vice versa. Only `image.RGB565` and `image.GRAY8` are valid output
-formats; pass the source through `image.convert` again if you need anything
-else. Output dimensions follow the same 1920 x 1080 pixel cap as conversion.
 
 ## Example: load JPEG from disk
 
