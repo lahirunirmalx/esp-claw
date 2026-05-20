@@ -30,6 +30,11 @@ dependencies:
   claw_ramfs:
     path: ../../../components/claw_modules/claw_ramfs
 
+  cardputer_kbd:
+    path: ../components/cardputer_kbd
+    rules:
+      - if: $CONFIG{ESP_BOARD_M5STACK_CARDPUTER} == True
+
   emote:
     path: ../../../components/common/emote
     rules:

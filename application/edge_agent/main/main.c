@@ -27,6 +27,10 @@
 #endif
 #include "app_config.h"
 
+#if CONFIG_ESP_BOARD_M5STACK_CARDPUTER
+#include "cardputer_kbd.h"
+#endif
+
 #define APP_ENABLE_MEM_LOG        (0)
 
 #define APP_FATFS_PARTITION_LABEL "storage"
@@ -349,6 +353,43 @@ static void memory_monitor_task(void *arg)
 
 #endif
 
+#if CONFIG_ESP_BOARD_M5STACK_CARDPUTER
+static void cardputer_kbd_task(void *arg)
+{
+    (void)arg;
+    if (cardputer_kbd_init() != ESP_OK) {
+        ESP_LOGE(TAG, "cardputer_kbd_init failed");
+        vTaskDelete(NULL);
+    }
+
+    cardputer_kbd_state_t prev = {0};
+    cardputer_kbd_state_t cur;
+    for (;;) {
+        cardputer_kbd_scan(&cur);
+        if (cardputer_kbd_state_changed(&prev, &cur)) {
+            if (cur.chars_len > 0) {
+                ESP_LOGI("kbd", "keys: %s%s%s%s%s",
+                         cur.ctrl  ? "[ctrl]"  : "",
+                         cur.shift ? "[shift]" : "",
+                         cur.alt   ? "[alt]"   : "",
+                         cur.fn    ? "[fn]"    : "",
+                         cur.chars);
+            } else if (cur.enter) {
+                ESP_LOGI("kbd", "ENTER");
+            } else if (cur.del) {
+                ESP_LOGI("kbd", "DEL");
+            } else if (cur.tab) {
+                ESP_LOGI("kbd", "TAB");
+            } else if (cur.space) {
+                ESP_LOGI("kbd", "SPACE");
+            }
+            prev = cur;
+        }
+        vTaskDelay(pdMS_TO_TICKS(20));  /* ~50 Hz */
+    }
+}
+#endif
+
 void app_main(void)
 {
     esp_log_level_set("esp-x509-crt-bundle", ESP_LOG_WARN);
@@ -431,6 +472,10 @@ void app_main(void)
 #endif
 
     register_wifi_command();
+
+#if CONFIG_ESP_BOARD_M5STACK_CARDPUTER
+    xTaskCreate(cardputer_kbd_task, "kbd", 3072, NULL, 4, NULL);
+#endif
 
 #if APP_ENABLE_MEM_LOG
     /* Start memory monitor: print internal free, min free, PSRAM free every 20s */

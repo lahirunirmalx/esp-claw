@@ -1,0 +1,4 @@
+board: m5stack_cardputer
+chip: esp32s3
+description: "M5Stack Cardputer (ESP32-S3FN8, 8MB flash, no PSRAM)"
+manufacturer: "M5Stack"

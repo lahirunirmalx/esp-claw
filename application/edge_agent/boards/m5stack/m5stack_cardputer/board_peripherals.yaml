@@ -1,0 +1,48 @@
+version: 1.0.0
+# Peripherals Configuration for M5Stack Cardputer
+# v2: SPI display + backlight + onboard WS2812 RGB LED.
+# Audio (PDM mic / I2S amp), microSD, and IR are still TODO.
+
+peripherals:
+
+  # RMT for WS2812 onboard LED (G21).
+  - name: rmt_tx
+    type: rmt
+    role: tx
+    config:
+      gpio_num: 21
+      clk_src: RMT_CLK_SRC_DEFAULT
+      resolution_hz: 10000000
+      mem_block_symbols: 64
+      trans_queue_depth: 4
+      intr_priority: 1
+      flags:
+        invert_out: false
+        with_dma: true
+        io_loop_back: false
+        io_od_mode: false
+        allow_pd: false
+        init_level: false
+
+  # SPI bus for the on-board ST7789V2 LCD (240x135).
+  # Cardputer pinmap: MOSI=G35, SCLK=G36, DC=G34, CS=G37, RST=G33, BL=G38.
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        data0_io_num: 35             # MOSI
+        sclk_io_num: 36              # SCLK
+        max_transfer_sz: 5400        # 240 * 135 * 2 / 12 — covers a 1/12 frame slice
+
+  # LCD backlight on GPIO38 (active high).
+  - name: ledc_backlight
+    type: ledc
+    role: none
+    config:
+      gpio_num: 38
+      freq_hz: 5000
+      duty: 1023
+      duty_resolution: LEDC_TIMER_10_BIT
+      output_invert: false
